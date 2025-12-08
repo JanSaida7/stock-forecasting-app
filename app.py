@@ -3,10 +3,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 from tensorflow.keras.models import load_model
+from datetime import datetime
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # Import our helper functions
 from data_loader import load_data
-from preprocess import scale_data, plot_data
+from preprocess import scale_data
 
 # Set page configuration
 st.set_page_config(page_title="Stock Forecaster", layout="wide")
@@ -15,7 +17,21 @@ st.title("📈 Stock Market Forecasting App")
 
 # Sidebar for user input
 st.sidebar.header("User Input")
-ticker = st.sidebar.text_input("Enter Stock Ticker", "AAPL")
+
+# Dropdown for Company Selection
+companies = {
+    "Apple (AAPL)": "AAPL",
+    "Tesla (TSLA)": "TSLA",
+    "Google (GOOGL)": "GOOGL",
+    "Microsoft (MSFT)": "MSFT",
+    "Amazon (AMZN)": "AMZN",
+    "Nvidia (NVDA)": "NVDA",
+    "Meta (META)": "META",
+    "Bitcoin (BTC-USD)": "BTC-USD"
+}
+
+selected_company = st.sidebar.selectbox("Select Company", list(companies.keys()))
+ticker = companies[selected_company]
 
 if st.sidebar.button("Run Forecast"):
     st.subheader(f"Analyzing {ticker}...")
@@ -28,22 +44,19 @@ if st.sidebar.button("Run Forecast"):
         st.error(f"Could not load data for {ticker}. Please check the ticker symbol.")
     else:
         # Display Summary
-        st.write(f"### {ticker} Stock Price History (2020-2024)")
-        st.write(df.tail())
+        st.write(f"### {selected_company} - Price History")
         
         # Plot Raw Data
-        st.subheader("Closing Price vs Time Chart")
         fig = plt.figure(figsize=(12, 6))
         plt.plot(df['Close'], label='Close Price')
-        plt.title(f"{ticker} Close Price")
+        plt.title(f"{ticker} Close Price History")
         plt.xlabel('Date')
         plt.ylabel('Price (USD)')
         plt.legend()
         st.pyplot(fig)
         
         # 2. Prepare Data for Model
-        st.subheader("Model Predictions")
-        with st.spinner("Loading Model & Calculating..."):
+        with st.spinner("Calculating Future Prices..."):
             # Scale data
             scaler, scaled_data = scale_data(df)
             
@@ -53,15 +66,36 @@ if st.sidebar.button("Run Forecast"):
             except:
                 st.error("Model not found! Please train the model first (Step 5).")
                 st.stop()
-                
-            # Prepare test data (Past 60 days to predict)
-            # We want to see how well it fits the existing data first
-            # We used 60 days as sequence length
-            seq_length = 60
-            x_test = []
-            y_test = [] # Actual values to compare against
             
-            # Create sequences from the entire dataset to visualize fit
+            # --- NEXT DAY PREDICTION ---
+            # We need the last 100 days of data to predict the next 1 day
+            seq_length = 100
+            
+            # Get the last 100 days from the scaled data
+            last_100_days = scaled_data[-seq_length:]
+            
+            # Reshape for the model (1 sample, 100 time steps, 1 feature)
+            last_100_days = np.reshape(last_100_days, (1, seq_length, 1))
+            
+            # Predict
+            prediction = model.predict(last_100_days)
+            
+            # Inverse Scale (Convert 0.xxxx back to dollars)
+            predicted_price = scaler.inverse_transform(prediction)
+            
+            # Display Big Metric
+            st.markdown("---")
+            st.subheader("🔮 AI Prediction")
+            st.metric(label="Predicted Close Price for Tomorrow", value=f"${predicted_price[0][0]:.2f}")
+            st.markdown("---")
+
+            # --- MODEL PERFORMANCE (Historical vs Predicted) ---
+            st.write("### Model Performance (Test on Past Data)")
+            # Generate predictions for the visualization graph
+            # Create sequences from the existing data
+            x_test = []
+            y_test = [] 
+            
             for i in range(seq_length, len(scaled_data)):
                 x_test.append(scaled_data[i-seq_length:i, 0])
                 y_test.append(scaled_data[i, 0])
@@ -69,21 +103,25 @@ if st.sidebar.button("Run Forecast"):
             x_test, y_test = np.array(x_test), np.array(y_test)
             x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
             
-            # Make Predictions
             predictions = model.predict(x_test)
-            
-            # Inverse Scale (Convert 0-1 back to USD)
             predictions = scaler.inverse_transform(predictions)
             y_test_scaled = scaler.inverse_transform(y_test.reshape(-1, 1))
             
             # Plot Predictions vs Actual
             fig2 = plt.figure(figsize=(12, 6))
             plt.plot(y_test_scaled, color='blue', label='Actual Price')
-            plt.plot(predictions, color='red', label='Predicted Price')
-            plt.title(f"{ticker} Price Prediction")
+            plt.plot(predictions, color='red', label='AI Predicted Price')
+            plt.title(f"{ticker} - Actual vs Predicted")
             plt.xlabel('Time')
             plt.ylabel('Price (USD)')
             plt.legend()
             st.pyplot(fig2)
+
+            # --- ACCURACY METRICS ---
+            st.subheader("Accuracy Metrics")
+            mae = mean_absolute_error(y_test_scaled, predictions)
+            rmse = np.sqrt(mean_squared_error(y_test_scaled, predictions))
             
-            st.success("Analysis Complete!")
+            col1, col2 = st.columns(2)
+            col1.metric("Mean Absolute Error (MAE)", f"${mae:.2f}")
+            col2.metric("Root Mean Squared Error (RMSE)", f"${rmse:.2f}")
