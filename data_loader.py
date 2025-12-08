@@ -14,9 +14,9 @@ def load_data(ticker):
     """
     print(f"Downloading data for {ticker}...")
     
-    # Dynamic Date Range: Today back to 4 years ago
+    # Dynamic Date Range: Today back to 10 years ago
     end_date = datetime.today().strftime('%Y-%m-%d')
-    start_date = (datetime.today() - timedelta(days=4*365)).strftime('%Y-%m-%d')
+    start_date = (datetime.today() - timedelta(days=10*365)).strftime('%Y-%m-%d')
     
     data = yf.download(ticker, start=start_date, end=end_date)
     return data
