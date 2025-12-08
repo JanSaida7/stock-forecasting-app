@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import streamlit as st
 from tensorflow.keras.models import load_model
 from datetime import datetime
@@ -46,14 +46,11 @@ if st.sidebar.button("Run Forecast"):
         # Display Summary
         st.write(f"### {selected_company} - Price History")
         
-        # Plot Raw Data
-        fig = plt.figure(figsize=(12, 6))
-        plt.plot(df['Close'], label='Close Price')
-        plt.title(f"{ticker} Close Price History")
-        plt.xlabel('Date')
-        plt.ylabel('Price (USD)')
-        plt.legend()
-        st.pyplot(fig)
+        # Plot Raw Data (Interactive with Plotly)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Close Price'))
+        fig.update_layout(title=f"{ticker} Close Price History", xaxis_title='Date', yaxis_title='Price (USD)')
+        st.plotly_chart(fig, use_container_width=True)
         
         # 2. Prepare Data for Model
         with st.spinner("Calculating Future Prices..."):
@@ -107,15 +104,12 @@ if st.sidebar.button("Run Forecast"):
             predictions = scaler.inverse_transform(predictions)
             y_test_scaled = scaler.inverse_transform(y_test.reshape(-1, 1))
             
-            # Plot Predictions vs Actual
-            fig2 = plt.figure(figsize=(12, 6))
-            plt.plot(y_test_scaled, color='blue', label='Actual Price')
-            plt.plot(predictions, color='red', label='AI Predicted Price')
-            plt.title(f"{ticker} - Actual vs Predicted")
-            plt.xlabel('Time')
-            plt.ylabel('Price (USD)')
-            plt.legend()
-            st.pyplot(fig2)
+            # Plot Predictions vs Actual (Interactive with Plotly)
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(y=y_test_scaled.flatten(), mode='lines', name='Actual Price', line=dict(color='blue')))
+            fig2.add_trace(go.Scatter(y=predictions.flatten(), mode='lines', name='AI Predicted Price', line=dict(color='red')))
+            fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
+            st.plotly_chart(fig2, use_container_width=True)
 
             # --- ACCURACY METRICS ---
             st.subheader("Accuracy Metrics")
