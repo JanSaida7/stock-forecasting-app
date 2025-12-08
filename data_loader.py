@@ -1,5 +1,6 @@
 import yfinance as yf
 import pandas as pd
+from datetime import datetime, timedelta
 
 def load_data(ticker):
     """
@@ -12,8 +13,12 @@ def load_data(ticker):
         pd.DataFrame: A DataFrame containing the stock history.
     """
     print(f"Downloading data for {ticker}...")
-    # Download data from Jan 1, 2020 to Jan 1, 2024
-    data = yf.download(ticker, start="2020-01-01", end="2024-01-01")
+    
+    # Dynamic Date Range: Today back to 4 years ago
+    end_date = datetime.today().strftime('%Y-%m-%d')
+    start_date = (datetime.today() - timedelta(days=4*365)).strftime('%Y-%m-%d')
+    
+    data = yf.download(ticker, start=start_date, end=end_date)
     return data
 
 if __name__ == "__main__":
