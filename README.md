@@ -3,10 +3,19 @@
 A Machine Learning powered application that predicts stock prices using an LSTM (Long Short-Term Memory) Neural Network. Built with Python, TensorFlow, and Streamlit.
 
 ## 🚀 Features
-- **Real-time Data Loading**: Fetches specific stock data from Yahoo Finance.
-- **Interactive Visualization**: Plots historical closing prices.
-- **AI Predictions**: Uses a trained LSTM model to forecast future trends.
-- **User-Friendly UI**: Simple web interface built with Streamlit.
+### 1. **Interactive Dashboard**
+   - **Company Selector**: Choose from popular tech giants (Apple, Tesla, Google, Microsoft, etc.).
+   - **Interactive Charts**: Zoom, pan, and hover over data points using **Plotly**.
+   - **Tomorrow's Prediction**: Shows a clear, predicted stock price for the next trading day.
+
+### 2. **Universal AI Model**
+   - **Generalist Training**: Trained on **10 Years** of combined data from **AAPL, MSFT, GOOGL, and AMZN**.
+   - **Robustness**: Understands general tech sector trends rather than just one company's history.
+   - **Deep Learning**: Uses an **LSTM (Long Short-Term Memory)** neural network with 50 Epochs of training.
+
+### 3. **Accuracy Reporting**
+   - **Scoreboard**: Displays **MAE** (Mean Absolute Error) and **RMSE** (Root Mean Squared Error) to quantify performance.
+   - Real-time comparison of "Actual vs Predicted" prices.
 
 ## 🛠️ Tech Stack
 - **Python**: Core programming language.
