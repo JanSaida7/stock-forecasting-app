@@ -116,36 +116,63 @@ def build_model(input_shape):
     return model
 
 if __name__ == "__main__":
-    ticker = "AAPL"
+    tickers = ["AAPL", "MSFT", "GOOGL", "AMZN"]
     
-    # 1. Load Data
-    print(f"Loading data for {ticker}...")
-    df = load_data(ticker)
+    all_x_train = []
+    all_y_train = []
     
-    # 2. Scale Data
-    print("Scaling data...")
-    scaler, scaled_data = scale_data(df)
-    
-    # 3. Create Sequences
-    print("Creating sequences...")
     SEQ_LENGTH = 100
-    x_train, y_train = create_sequences(scaled_data, SEQ_LENGTH)
+    
+    print(f"Starting Generalist Training on: {tickers}")
+    
+    for ticker in tickers:
+        print(f"\n--- Processing {ticker} ---")
+        try:
+            # 1. Load Data
+            df = load_data(ticker)
+            if df.empty:
+                print(f"Skipping {ticker} (No data)")
+                continue
+                
+            # 2. Scale Data
+            # Note: We fit a scaler for EACH stock individually to normalize its specific price range
+            # But for simplicity in this 'Universal' model, we strictly need to be careful.
+            # Ideally, we verify if they share range or normalize conceptually.
+            # Here we will normalize each stock 0-1 independently, so the model learns "patterns" not "dollars".
+            scaler, scaled_data = scale_data(df)
+            
+            # 3. Create Sequences
+            x, y = create_sequences(scaled_data, SEQ_LENGTH)
+            
+            all_x_train.append(x)
+            all_y_train.append(y)
+            print(f"Added {len(x)} samples from {ticker}")
+            
+        except Exception as e:
+            print(f"Error processing {ticker}: {e}")
+            
+    # Combine all data
+    # vstack stacks arrays vertically (row wise)
+    if not all_x_train:
+        print("No data collected. Exiting.")
+        exit()
+
+    x_train = np.vstack(all_x_train)
+    y_train = np.concatenate(all_y_train)
     
     # Reshape x_train for LSTM [samples, time steps, features]
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     
-    print(f"Training data shape: {x_train.shape}")
+    print(f"\nTOTAL Training Data Shape: {x_train.shape}")
     
     # 4. Build Model
     print("Building model...")
     model = build_model((x_train.shape[1], 1))
     
     # 5. Train Model
-    print("Training model (This may take a minute)...")
-    # Epochs = how many times the model sees the data
-    # Batch_size = how many samples to process at once
+    print("Training Universal Model (This will take a few minutes)...")
     model.fit(x_train, y_train, batch_size=32, epochs=50)
     
     # 6. Save Model
-    model.save('stock_model.keras') # .keras is the new standard format
-    print("\nModel trained and saved successfully as 'stock_model.keras'!")
+    model.save('stock_model.keras')
+    print("\nUniversal Model trained and saved successfully!")
