@@ -45,6 +45,7 @@ if st.sidebar.button("Run Forecast"):
     else:
         # Display Summary
         st.write(f"### {selected_company} - Price History")
+        st.dataframe(df.tail())
         
         # Plot Raw Data (Interactive with Plotly)
         fig = go.Figure()
