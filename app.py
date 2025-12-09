@@ -47,9 +47,15 @@ if st.sidebar.button("Run Forecast"):
         st.write(f"### {selected_company} - Price History")
         st.dataframe(df.tail())
         
+        # Extract Close Price properly (Handle MultiIndex)
+        if isinstance(df.columns, pd.MultiIndex):
+            close_price = df['Close'].iloc[:, 0]
+        else:
+            close_price = df['Close']
+        
         # Plot Raw Data (Interactive with Plotly)
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Close Price'))
+        fig.add_trace(go.Scatter(x=df.index, y=close_price, mode='lines', name='Close Price'))
         fig.update_layout(title=f"{ticker} Close Price History", xaxis_title='Date', yaxis_title='Price (USD)')
         st.plotly_chart(fig, use_container_width=True)
         

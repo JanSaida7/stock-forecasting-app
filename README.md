@@ -23,7 +23,7 @@ A Machine Learning powered application that predicts stock prices using an LSTM 
 - **Streamlit**: Frontend infrastructure.
 - **yfinance**: Data acquisition.
 - **Pandas & NumPy**: Data manipulation.
-- **Matplotlib**: Plotting and graphs.
+- **Plotly**: Interactive Data Visualization.
 
 ## 🔧 Installation & Setup
 
@@ -62,7 +62,7 @@ A Machine Learning powered application that predicts stock prices using an LSTM 
 
 ## 🧠 Model Details
 - **Architecture**: LSTM (2 layers, 50 units each) + Dense Layers.
-- **Sequence Length**: Looks back 60 days to predict the next day.
+- **Sequence Length**: Looks back 100 days to predict the next day.
 - **Optimizer**: Adam.
 - **Loss Function**: Mean Squared Error.
 
