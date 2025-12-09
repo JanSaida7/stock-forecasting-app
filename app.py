@@ -204,6 +204,15 @@ if st.sidebar.button("Run Forecast"):
                 comparison_df.set_index('Date', inplace=True)
                 st.write("### Detailed Data (Last 10 Days)")
                 st.dataframe(comparison_df.style.format("{:.2f}"))
+                
+                # Export Button
+                csv = comparison_df.to_csv()
+                st.download_button(
+                    label="📥 Download Data as CSV",
+                    data=csv,
+                    file_name=f'{ticker}_last_10_days_prediction.csv',
+                    mime='text/csv',
+                )
             else:
                 st.warning("Not enough data to show last 10 days verification.")
 
