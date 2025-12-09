@@ -10,6 +10,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from data_loader import load_data
 from preprocess import scale_data
 
+# Define cached data loading function
+@st.cache_data
+def load_data_cached(ticker):
+    return load_data(ticker)
+
 # Set page configuration
 st.set_page_config(page_title="Stock Forecaster", layout="wide")
 
@@ -38,7 +43,7 @@ if st.sidebar.button("Run Forecast"):
     
     # 1. Load Data
     with st.spinner("Downloading data..."):
-        df = load_data(ticker)
+        df = load_data_cached(ticker)
     
     if df.empty:
         st.error(f"Could not load data for {ticker}. Please check the ticker symbol.")
@@ -55,14 +60,54 @@ if st.sidebar.button("Run Forecast"):
         
         # Plot Raw Data (Interactive with Plotly)
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df.index, y=close_price, mode='lines', name='Close Price'))
-        fig.update_layout(title=f"{ticker} Close Price History", xaxis_title='Date', yaxis_title='Price (USD)')
+        
+        # Check if we have Open, High, Low, Close data for Candlestick
+        # yfinance normally provides these
+        if 'Open' in df.columns and 'High' in df.columns and 'Low' in df.columns:
+            # Handle MultiIndex if present
+            if isinstance(df.columns, pd.MultiIndex):
+                open_p = df['Open'].iloc[:, 0]
+                high_p = df['High'].iloc[:, 0]
+                low_p = df['Low'].iloc[:, 0]
+                close_p = df['Close'].iloc[:, 0]
+            else:
+                open_p = df['Open']
+                high_p = df['High']
+                low_p = df['Low']
+                close_p = df['Close']
+                
+            fig.add_trace(go.Candlestick(x=df.index,
+                            open=open_p,
+                            high=high_p,
+                            low=low_p,
+                            close=close_p,
+                            name='Market Data'))
+        else:
+            # Fallback to Line chart if data is missing
+            fig.add_trace(go.Scatter(x=df.index, y=close_price, mode='lines', name='Close Price'))
+            
+        fig.update_layout(
+            title=f"{ticker} Historical Prices",
+            yaxis_title='Price (USD)',
+            xaxis_rangeslider_visible=False,
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(count=1, label="1y", step="year", stepmode="backward"),
+                        dict(step="all")
+                    ])
+                )
+            )
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         # 2. Prepare Data for Model
         with st.spinner("Calculating Future Prices..."):
             # Scale data
-            scaler, scaled_data = scale_data(df)
+            scaler, target_scaler, scaled_data = scale_data(df)
             
             # Load trained model
             try:
@@ -78,14 +123,14 @@ if st.sidebar.button("Run Forecast"):
             # Get the last 100 days from the scaled data
             last_100_days = scaled_data[-seq_length:]
             
-            # Reshape for the model (1 sample, 100 time steps, 1 feature)
-            last_100_days = np.reshape(last_100_days, (1, seq_length, 1))
+            # Reshape for the model (1 sample, 100 time steps, 3 features)
+            last_100_days = np.reshape(last_100_days, (1, seq_length, 3))
             
             # Predict
             prediction = model.predict(last_100_days)
             
             # Inverse Scale (Convert 0.xxxx back to dollars)
-            predicted_price = scaler.inverse_transform(prediction)
+            predicted_price = target_scaler.inverse_transform(prediction)
             
             # Display Big Metric
             st.markdown("---")
@@ -101,15 +146,15 @@ if st.sidebar.button("Run Forecast"):
             y_test = [] 
             
             for i in range(seq_length, len(scaled_data)):
-                x_test.append(scaled_data[i-seq_length:i, 0])
+                x_test.append(scaled_data[i-seq_length:i])
                 y_test.append(scaled_data[i, 0])
                 
             x_test, y_test = np.array(x_test), np.array(y_test)
-            x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+            # x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1)) # No longer needed, already 3D
             
             predictions = model.predict(x_test)
-            predictions = scaler.inverse_transform(predictions)
-            y_test_scaled = scaler.inverse_transform(y_test.reshape(-1, 1))
+            predictions = target_scaler.inverse_transform(predictions)
+            y_test_scaled = target_scaler.inverse_transform(y_test.reshape(-1, 1))
             
             # Plot Predictions vs Actual (Interactive with Plotly)
             fig2 = go.Figure()
