@@ -163,6 +163,50 @@ if st.sidebar.button("Run Forecast"):
             fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
             st.plotly_chart(fig2, use_container_width=True)
 
+            # --- LAST 10 DAYS PERFORMANCE (New Feature) ---
+            st.markdown("---")
+            st.subheader("🔍 Model Performance (Last 10 Days)")
+            
+            # Get last 10 days of data
+            if len(y_test_scaled) >= 10:
+                y_last_10 = y_test_scaled[-10:].flatten()
+                pred_last_10 = predictions[-10:].flatten()
+                
+                # Create a date range for these points (Assuming consistent daily data ending mostly recently)
+                # We trace back from the last available date in our dataframe
+                last_date_idx = df.index[-1]
+                # Note: This index mapping is an approximation for visual ease, as test data corresponds to the end of the df
+                dates_last_10 = df.index[-10:] 
+
+                # 1. Metrics for Last 10 Days
+                mae_10 = mean_absolute_error(y_last_10, pred_last_10)
+                rmse_10 = np.sqrt(mean_squared_error(y_last_10, pred_last_10))
+
+                m_col1, m_col2 = st.columns(2)
+                m_col1.metric("Last 10 Days MAE", f"${mae_10:.2f}")
+                m_col2.metric("Last 10 Days RMSE", f"${rmse_10:.2f}")
+
+                # 2. Specific Chart for Last 10 Days
+                fig3 = go.Figure()
+                fig3.add_trace(go.Scatter(x=dates_last_10, y=y_last_10, mode='lines+markers', name='Actual Price', line=dict(color='blue')))
+                fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='red', dash='dash')))
+                fig3.update_layout(title="Last 10 Days: Actual vs Predicted", xaxis_title='Date', yaxis_title='Price (USD)')
+                st.plotly_chart(fig3, use_container_width=True)
+                
+                # 3. Data Table
+                comparison_df = pd.DataFrame({
+                    'Date': dates_last_10,
+                    'Actual Price': y_last_10,
+                    'Predicted Price': pred_last_10,
+                    'Difference': y_last_10 - pred_last_10,
+                    'Error %': np.abs((y_last_10 - pred_last_10) / y_last_10) * 100
+                })
+                comparison_df.set_index('Date', inplace=True)
+                st.write("### Detailed Data (Last 10 Days)")
+                st.dataframe(comparison_df.style.format("{:.2f}"))
+            else:
+                st.warning("Not enough data to show last 10 days verification.")
+
             # --- ACCURACY METRICS ---
             st.subheader("Accuracy Metrics")
             mae = mean_absolute_error(y_test_scaled, predictions)
