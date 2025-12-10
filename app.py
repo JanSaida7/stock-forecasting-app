@@ -164,7 +164,27 @@ if st.session_state['run_forecast']:
                 # Display Big Metric
                 st.markdown("---")
                 st.subheader("🔮 AI Prediction")
-                st.metric(label="Predicted Close Price for Tomorrow", value=f"${predicted_price[0][0]:.2f}")
+                
+                col_pred, col_signal = st.columns(2)
+                
+                with col_pred:
+                    st.metric(label="Predicted Close Price for Tomorrow", value=f"${predicted_price[0][0]:.2f}")
+                    
+                with col_signal:
+                    # Calculate Signal
+                    last_actual_price = df['Close'].iloc[-1]
+                    predicted_value = predicted_price[0][0]
+                    
+                    if predicted_value > last_actual_price:
+                        st.markdown(f"<h2 style='color: green;'>✅ BUY SIGNAL</h2>", unsafe_allow_html=True)
+                        st.write(f"Predicted to RISE from ${last_actual_price:.2f}")
+                    elif predicted_value < last_actual_price:
+                        st.markdown(f"<h2 style='color: red;'>🔻 SELL SIGNAL</h2>", unsafe_allow_html=True)
+                        st.write(f"Predicted to FALL from ${last_actual_price:.2f}")
+                    else:
+                        st.markdown(f"<h2 style='color: gray;'>⏸️ HOLD SIGNAL</h2>", unsafe_allow_html=True)
+                        st.write(f"Predicted to STAY FLAT at ${last_actual_price:.2f}")
+                        
                 st.markdown("---")
 
                 # --- MODEL PERFORMANCE (Historical vs Predicted) ---
