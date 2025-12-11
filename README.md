@@ -4,19 +4,20 @@ A Machine Learning powered application that predicts stock prices using an LSTM 
 
 ## 🚀 Features
 ### 1. **Interactive Dashboard**
-   - **Company Selector**: Choose from popular tech giants (Apple, Tesla, Google, Microsoft, etc.).
-   - **Professional Charts**: **Candlestick charts** with 1M, 6M, YTD, and 1Y range selectors for deep analysis.
+   - **Company Selector**: Choose from popular tech giants (Apple, Tesla, Google, Microsoft, etc.) and Bitcoin.
+   - **Professional Charts**: **Candlestick charts** with 1M, 6M, YTD, and 1Y range selectors.
+   - **Interactive Date Filter**: Custom date range picker to zoom in on specific historical periods.
    - **Tomorrow's Prediction**: Shows a clear, predicted stock price for the next trading day.
 
-### 2. **Advanced AI Model**
-   - **Multi-Feature Learning**: Trained not just on Price, but also on **RSI (14)** and **EMA (50)** technical indicators.
-   - **Generalist Training**: Learn patterns from **10 Years** of combined data (AAPL, MSFT, GOOGL, AMZN).
-   - **Robust Architecture**: Uses a multi-input **LSTM (Long Short-Term Memory)** neural network.
-   - **Performance**: Instant load times thanks to **Smart Caching**.
+### 2. **Advanced AI & Analytics**
+   - **Multi-Model Support**: Toggle between deep learning (**LSTM**) and statistical baselines (**Linear Regression**).
+   - **Trading Signals**: Actionable **BUY**, **SELL**, or **HOLD** signals based on predicted price movement.
+   - **Profit Analysis**: "Buy & Hold" vs "Model Strategy" comparison to validate profitability.
+   - **Multi-Feature Learning**: Training on Price, **RSI (14)**, and **EMA (50)**.
 
-### 3. **Accuracy Reporting**
-   - **Scoreboard**: Displays **MAE** (Mean Absolute Error) and **RMSE** (Root Mean Squared Error) to quantify performance.
-   - **Visual Verification**: Comparing "Actual vs Predicted" prices on historical test data.
+### 3. **Data Transparency**
+   - **Accuracy Metrics**: Live **MAE** and **RMSE** scores for the selected period.
+   - **Detailed Data**: View and **Export** historical predictions and errors as CSV.
 
 ## 🛠️ Tech Stack
 - **Python**: Core programming language.

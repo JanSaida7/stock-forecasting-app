@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from tensorflow.keras.models import load_model
 from datetime import datetime
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # Import our helper functions
@@ -14,6 +15,26 @@ from preprocess import scale_data
 @st.cache_data
 def load_data_cached(ticker):
     return load_data(ticker)
+
+# Train Linear Regression Model (On-the-fly)
+@st.cache_resource
+def train_lr_model(scaled_data):
+    # Prepare data for LR (Flattened input)
+    # Use existing sequence length of 100
+    seq_length = 100
+    x_train = []
+    y_train = []
+    
+    for i in range(seq_length, len(scaled_data)):
+        x_train.append(scaled_data[i-seq_length:i].flatten()) # Flatten (100, 3) -> (300,)
+        y_train.append(scaled_data[i, 0])      # Close price
+        
+    x_train, y_train = np.array(x_train), np.array(y_train)
+    
+    # Train
+    lr_model = LinearRegression()
+    lr_model.fit(x_train, y_train)
+    return lr_model
 
 # Set page configuration
 st.set_page_config(page_title="Stock Forecaster", layout="wide")
@@ -38,6 +59,8 @@ companies = {
 selected_company = st.sidebar.selectbox("Select Company", list(companies.keys()))
 ticker = companies[selected_company]
 
+# Model Selection
+model_type = st.sidebar.radio("Select Model Type", ["LSTM (Deep Learning)", "Linear Regression (Baseline)"])
 
 # Session State for persisting data across reruns (e.g. when changing dates)
 if 'run_forecast' not in st.session_state:
@@ -133,33 +156,40 @@ if st.session_state['run_forecast']:
                 # Scale data
                 scaler, target_scaler, scaled_data = scale_data(df)
                 
-                # Load trained model
-                try:
-                    model = load_model('stock_model.keras')
-                except:
-                    st.error("Model not found! Please train the model first (Step 5).")
-                    st.stop()
+                # --- MODEL SELECTION LOGIC ---
+                model = None
                 
-                # --- NEXT DAY PREDICTION ---
-                # We need the last 100 days of data to predict the next 1 day
-                max_idx = len(scaled_data) 
-                # But we only need the VERY LAST 100 days for tomorrow's prediction
-                # The filter shouldn't affect the model's ability to predict tomorrow, 
-                # so we use the full 'scaled_data' here.
+                if "LSTM" in model_type:
+                    # Load trained LSTM model
+                    try:
+                        model = load_model('stock_model.keras')
+                    except:
+                        st.error("LSTM Model not found! Please train the model first.")
+                        st.stop()
+                else:
+                    # Train Linear Regression on-the-fly
+                    model = train_lr_model(scaled_data)
+                    st.success("Trained Linear Regression Baseline!")
                 
+                # --- PREDICTION PREP ---
                 seq_length = 100
                 
                 # Get the last 100 days from the scaled data
                 last_100_days = scaled_data[-seq_length:]
                 
-                # Reshape for the model (1 sample, 100 time steps, 3 features)
-                last_100_days = np.reshape(last_100_days, (1, seq_length, 3))
+                # Prepare input shape based on model type
+                if "LSTM" in model_type:
+                    # Reshape for LSTM (1 sample, 100 time steps, 3 features)
+                    input_data = np.reshape(last_100_days, (1, seq_length, 3))
+                else:
+                    # Flatten for LR (1 sample, 300 features)
+                    input_data = last_100_days.flatten().reshape(1, -1)
                 
                 # Predict
-                prediction = model.predict(last_100_days)
+                prediction = model.predict(input_data)
                 
                 # Inverse Scale (Convert 0.xxxx back to dollars)
-                predicted_price = target_scaler.inverse_transform(prediction)
+                predicted_price = target_scaler.inverse_transform(prediction.reshape(-1, 1))
                 
                 # Display Big Metric
                 st.markdown("---")
@@ -204,9 +234,16 @@ if st.session_state['run_forecast']:
                     y_test.append(scaled_data[i, 0])
                     
                 x_test, y_test = np.array(x_test), np.array(y_test)
-                # x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1)) # No longer needed, already 3D
+                
+                # Reshape if Linear Regression
+                if "Linear Regression" in model_type:
+                    x_test = x_test.reshape(x_test.shape[0], -1)
                 
                 predictions = model.predict(x_test)
+                # Reshape for inverse transform (Scaler expects 2D)
+                if predictions.ndim == 1:
+                    predictions = predictions.reshape(-1, 1)
+                
                 predictions = target_scaler.inverse_transform(predictions)
                 y_test_scaled = target_scaler.inverse_transform(y_test.reshape(-1, 1))
                 
