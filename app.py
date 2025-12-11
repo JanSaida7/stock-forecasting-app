@@ -172,7 +172,12 @@ if st.session_state['run_forecast']:
                     
                 with col_signal:
                     # Calculate Signal
-                    last_actual_price = df['Close'].iloc[-1]
+                    # Handle MultiIndex for Last Actual Price
+                    if isinstance(df.columns, pd.MultiIndex):
+                        last_actual_price = float(df['Close'].iloc[-1, 0])
+                    else:
+                        last_actual_price = float(df['Close'].iloc[-1])
+                        
                     predicted_value = predicted_price[0][0]
                     
                     if predicted_value > last_actual_price:
@@ -251,6 +256,42 @@ if st.session_state['run_forecast']:
                     fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='red', dash='dash')))
                     fig3.update_layout(title="Last 10 Days: Actual vs Predicted", xaxis_title='Date', yaxis_title='Price (USD)')
                     st.plotly_chart(fig3, use_container_width=True)
+                    
+                    # --- PROFIT ANALYSIS (Baseline Comparison) ---
+                    st.markdown("---")
+                    st.subheader("💰 Profit Analysis (Model vs Buy & Hold)")
+                    
+                    # 1. Calculate Daily Returns
+                    profit_df = filtered_pred_df.copy()
+                    profit_df['Daily_Return'] = profit_df['Actual'].pct_change()
+                    
+                    # 2. Signal: Buy (1) if Predicted > Previous Actual
+                    profit_df['Prev_Actual'] = profit_df['Actual'].shift(1)
+                    profit_df['Signal'] = np.where(profit_df['Predicted'] > profit_df['Prev_Actual'], 1, 0)
+                    
+                    # 3. Strategy Return
+                    profit_df['Strategy_Return'] = profit_df['Signal'].shift(1) * profit_df['Daily_Return']
+                    
+                    # 4. Cumulative Returns
+                    profit_df['Buy_Hold_Cum'] = (1 + profit_df['Daily_Return']).cumprod() - 1
+                    profit_df['Strategy_Cum'] = (1 + profit_df['Strategy_Return']).cumprod() - 1
+                    
+                    profit_df.fillna(0, inplace=True)
+                    
+                    # Plot
+                    fig_profit = go.Figure()
+                    fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Buy_Hold_Cum']*100, mode='lines', name='Buy & Hold (%)', line=dict(color='blue')))
+                    fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Strategy_Cum']*100, mode='lines', name='Model Strategy (%)', line=dict(color='green')))
+                    fig_profit.update_layout(title="Cumulative Return Comparison (Selected Period)", xaxis_title='Date', yaxis_title='Return (%)')
+                    st.plotly_chart(fig_profit, use_container_width=True)
+                    
+                    # Metrics
+                    total_buy_hold = profit_df['Buy_Hold_Cum'].iloc[-1] * 100
+                    total_strategy = profit_df['Strategy_Cum'].iloc[-1] * 100
+                    
+                    p_col1, p_col2 = st.columns(2)
+                    p_col1.metric("Total Buy & Hold Return", f"{total_buy_hold:.2f}%")
+                    p_col2.metric("Total Model Return", f"{total_strategy:.2f}%", delta=f"{total_strategy-total_buy_hold:.2f}%")
                     
                     # 3. Data Table
                     comparison_df = pd.DataFrame({
