@@ -10,6 +10,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 # Import our helper functions
 from data_loader import load_data
 from preprocess import scale_data
+from model import train_universal_model # Import training logic
 
 # Define cached data loading function
 @st.cache_data
@@ -61,6 +62,18 @@ ticker = companies[selected_company]
 
 # Model Selection
 model_type = st.sidebar.radio("Select Model Type", ["LSTM (Deep Learning)", "Linear Regression (Baseline)"])
+
+# Retrain Button (Only for LSTM)
+if "LSTM" in model_type:
+    if st.sidebar.button("🔄 Retrain LSTM Model"):
+        with st.spinner("Retraining Universal LSTM Model... This may take 2-5 minutes."):
+            success, message = train_universal_model(epochs=5) # 5 epochs for speed in demo, can be 10
+            if success:
+                st.success(message)
+                # Clear cache to ensure model reloads
+                st.cache_resource.clear()
+            else:
+                st.error(f"Training Failed: {message}")
 
 # Session State for persisting data across reruns (e.g. when changing dates)
 if 'run_forecast' not in st.session_state:
