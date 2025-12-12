@@ -11,11 +11,19 @@ A Machine Learning powered application that predicts stock prices using an LSTM 
 
 ### 2. **Advanced AI & Analytics**
    - **Multi-Model Support**: Toggle between deep learning (**LSTM**) and statistical baselines (**Linear Regression**).
+   - **Model Retraining**: One-click **Retrain** button to update the model with the latest data directly from the UI.
    - **Trading Signals**: Actionable **BUY**, **SELL**, or **HOLD** signals based on predicted price movement.
+   - **7-Day Forecast**: Recursive multi-step prediction to see the trend for the upcoming week.
    - **Profit Analysis**: "Buy & Hold" vs "Model Strategy" comparison to validate profitability.
-   - **Multi-Feature Learning**: Training on Price, **RSI (14)**, and **EMA (50)**.
+   - **News Sentiment**: Real-time news headlines with **Sentiment Analysis** (Positive/Negative/Neutral) powered by TextBlob.
 
-### 3. **Data Transparency**
+### 3. **Paper Trading Simulator** 💰
+   - **Virtual Portfolio**: Start with a **$10,000** virtual balance.
+   - **Practice Trading**: Buy and Sell stocks at real-time prices to test your strategies risk-free.
+   - **Session Tracking**: Tracks your shares, cash balance, and total portfolio value (session-based).
+
+### 4. **Data Transparency & UX**
+   - **Tabbed Layout**: Clean interface with separate tabs for Forecasts, Performance Metrics, and Raw Data.
    - **Accuracy Metrics**: Live **MAE** and **RMSE** scores for the selected period.
    - **Detailed Data**: View and **Export** historical predictions and errors as CSV.
 
