@@ -452,24 +452,13 @@ if st.session_state['run_forecast']:
                     if news_items:
                         for news in news_items:
                             st.markdown(f"""
-                            <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
-                                <div style='
-                                    padding: 15px; 
-                                    border-radius: 8px; 
-                                    border: 1px solid #e0e0e0; 
-                                    margin-bottom: 10px; 
-                                    transition: background-color 0.2s; 
-                                    background-color: transparent;'
-                                    onmouseover="this.style.backgroundColor='#f0f2f6';" 
-                                    onmouseout="this.style.backgroundColor='transparent';">
-                                    
-                                    <b style='font-size: 1.1em;'>{news['title']}</b><br>
-                                    <div style='margin-top: 5px; font-size: 0.9em; color: gray;'>
-                                        <span>{news['publisher']}</span> • 
-                                        <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
-                                    </div>
-                                </div>
-                            </a>
+                            <div style='padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;'>
+                                <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
+                                    <b>{news['title']}</b>
+                                </a><br>
+                                <span style='color: gray; font-size: 0.8em;'>{news['publisher']}</span> • 
+                                <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
+                            </div>
                             """, unsafe_allow_html=True)
                     else:
                         st.write("No recent news found.")
