@@ -103,6 +103,17 @@ st.title("📈 Stock Market Forecasting App")
 # Sidebar for user input
 st.sidebar.header("User Input")
 
+# --- APP GUIDE ---
+with st.sidebar.expander("ℹ️ How to use", expanded=False):
+    st.markdown("""
+    1. **Select Company**: Choose a stock from the dropdown.
+    2. **Choose Model**:
+        * *LSTM*: Deep Learning (slower, more complex).
+        * *Linear Regression*: Fast baseline.
+    3. **Run Forecast**: Click to fetch data and predict.
+    4. **Paper Trading**: Buy/Sell virtual stocks to test strategies.
+    """)
+
 # Dropdown for Company Selection
 companies = {
     "Apple (AAPL)": "AAPL",
@@ -115,15 +126,23 @@ companies = {
     "Bitcoin (BTC-USD)": "BTC-USD"
 }
 
-selected_company = st.sidebar.selectbox("Select Company", list(companies.keys()))
+selected_company = st.sidebar.selectbox(
+    "Select Company", 
+    list(companies.keys()), 
+    help="Choose the stock ticker you want to analyze."
+)
 ticker = companies[selected_company]
 
 # Model Selection
-model_type = st.sidebar.radio("Select Model Type", ["LSTM (Deep Learning)", "Linear Regression (Baseline)"])
+model_type = st.sidebar.radio(
+    "Select Model Type", 
+    ["LSTM (Deep Learning)", "Linear Regression (Baseline)"],
+    help="LSTM: Good for complex patterns.\nLinear Regression: Good for trends."
+)
 
 # Retrain Button (Only for LSTM)
 if "LSTM" in model_type:
-    if st.sidebar.button("🔄 Retrain LSTM Model"):
+    if st.sidebar.button("🔄 Retrain LSTM Model", help="Click to retrain the model with the latest data (approx 2-5 mins)."):
         with st.spinner("Retraining Universal LSTM Model... This may take 2-5 minutes."):
             success, message = train_universal_model(epochs=5) # 5 epochs for speed in demo, can be 10
             if success:
@@ -137,7 +156,7 @@ if "LSTM" in model_type:
 if 'run_forecast' not in st.session_state:
     st.session_state['run_forecast'] = False
 
-if st.sidebar.button("Run Forecast"):
+if st.sidebar.button("Run Forecast", type="primary", help="Fetch data and generate predictions."):
     st.session_state['run_forecast'] = True
 
 if st.session_state['run_forecast']:
@@ -319,7 +338,11 @@ if st.session_state['run_forecast']:
                 col_pred, col_signal = st.columns(2)
                 
                 with col_pred:
-                    st.metric(label="Predicted Close Price for Tomorrow", value=f"${predicted_price[0][0]:.2f}")
+                    st.metric(
+                        label="Predicted Close Price for Tomorrow", 
+                        value=f"${predicted_price[0][0]:.2f}",
+                        help="The AI's best guess for the stock's closing price on the next trading day."
+                    )
                     
                 with col_signal:
                     # Calculate Signal
