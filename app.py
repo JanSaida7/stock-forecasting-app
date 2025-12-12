@@ -90,6 +90,11 @@ def train_lr_model(scaled_data):
     lr_model.fit(x_train, y_train)
     return lr_model
 
+if 'balance' not in st.session_state:
+    st.session_state['balance'] = 10000.0
+if 'portfolio' not in st.session_state:
+    st.session_state['portfolio'] = {} # Dict to store shares per ticker e.g. {'AAPL': 10}
+
 # Set page configuration
 st.set_page_config(page_title="Stock Forecaster", layout="wide")
 
@@ -146,6 +151,56 @@ if st.session_state['run_forecast']:
         st.error(f"Could not load data for {ticker}. Please check the ticker symbol.")
     else:
 
+        display_df = df.reset_index()
+        display_df['Date'] = display_df['Date'].dt.date
+        
+        # --- PRE-CALCULATE LATEST PRICE ---
+        # Handle MultiIndex for Last Actual Price
+        if isinstance(df.columns, pd.MultiIndex):
+            last_actual_price = float(df['Close'].iloc[-1, 0])
+        else:
+            last_actual_price = float(df['Close'].iloc[-1])
+            
+        # --- PAPER TRADING SIMULATOR (Sidebar) ---
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("💰 Paper Trading")
+        
+        # 1. Dashboard
+        current_shares = st.session_state['portfolio'].get(ticker, 0)
+        total_balance = st.session_state['balance']
+        position_value = current_shares * last_actual_price
+        
+        st.sidebar.metric("Cash Balance", f"${total_balance:,.2f}")
+        st.sidebar.metric(f"Shares ({ticker})", f"{current_shares}")
+        st.sidebar.metric("Position Value", f"${position_value:,.2f}")
+        
+        # 2. Trade Controls
+        trade_qty = st.sidebar.number_input("Quantity", min_value=1, value=1, step=1)
+        
+        col_buy, col_sell = st.sidebar.columns(2)
+        
+        with col_buy:
+            if st.button("Buy", type="primary"):
+                cost = trade_qty * last_actual_price
+                if total_balance >= cost:
+                    st.session_state['balance'] -= cost
+                    st.session_state['portfolio'][ticker] = current_shares + trade_qty
+                    st.sidebar.success(f"Bought {trade_qty} {ticker}!")
+                    st.rerun()
+                else:
+                    st.sidebar.error("Insufficient Funds!")
+                    
+        with col_sell:
+            if st.button("Sell"):
+                if current_shares >= trade_qty:
+                    revenue = trade_qty * last_actual_price
+                    st.session_state['balance'] += revenue
+                    st.session_state['portfolio'][ticker] = current_shares - trade_qty
+                    st.sidebar.success(f"Sold {trade_qty} {ticker}!")
+                    st.rerun()
+                else:
+                    st.sidebar.error("Not enough shares!")
+        
         # Date Filter
         st.sidebar.subheader("Date Range")
         min_date = df.index.min().date()
