@@ -21,8 +21,9 @@ def load_data_cached(ticker):
     return load_data(ticker)
 
 # Fetch News function
-@st.cache_data(ttl=3600) # Cache for 1 hour
+# @st.cache_data(ttl=3600) # CMC: Disabled for debugging
 def get_stock_news(ticker):
+    # st.write(f"Debug: Fetching news for {ticker}")
     try:
         stock = yf.Ticker(ticker)
         news_list = stock.news
@@ -30,9 +31,18 @@ def get_stock_news(ticker):
         processed_news = []
         if news_list:
             for item in news_list[:5]: # Top 5 news
-                title = item.get('title', '')
-                link = item.get('link', '')
-                publisher = item.get('publisher', 'Unknown')
+                # Handle nested content structure usually found in yfinance
+                content = item.get('content', item) # Fallback to item if not nested
+                
+                title = content.get('title', '')
+                link = content.get('canonicalUrl', content.get('link', ''))
+                
+                # Provider/Publisher might be a dict or string
+                pub_data = content.get('provider', {})
+                if isinstance(pub_data, dict):
+                    publisher = pub_data.get('displayName', 'Unknown')
+                else:
+                    publisher = str(pub_data)
                 
                 # Sentiment Analysis
                 analysis = TextBlob(title)
