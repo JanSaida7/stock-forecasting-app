@@ -341,248 +341,210 @@ if st.session_state['run_forecast']:
                         st.markdown(f"<h2 style='color: gray;'>⏸️ HOLD SIGNAL</h2>", unsafe_allow_html=True)
                         st.write(f"Predicted to STAY FLAT at ${last_actual_price:.2f}")
                         
-                # --- 7-DAY FORECAST (Recursive) ---
-                st.markdown("---")
-                st.subheader("📅 7-Day Forecast (Experimental)")
-                st.info("Note: Recursive forecasting uses the model's own predictions as input for the next day. Accuracy may decrease over longer horizons.")
                 
-                future_days = 7
-                future_predictions = []
+                # --- TABS SETUP ---
+                tab1, tab2, tab3 = st.tabs(["📅 Forecast & News", "📊 Model Performance", "📥 Raw Data"])
                 
-                # We start with the same last_100_days 
-                # (We need to be careful not to mutate the original if we needed it, but here we can just start fresh selection)
-                current_batch = scaled_data[-seq_length:].copy() 
-                
-                for i in range(future_days):
-                    # 1. Prepare input
-                    if "LSTM" in model_type:
-                        input_feed = np.reshape(current_batch, (1, seq_length, 3))
-                    else:
-                        input_feed = current_batch.flatten().reshape(1, -1)
+                with tab1:
+                    # --- 7-DAY FORECAST (Recursive) ---
+                    st.subheader("📅 7-Day Forecast (Experimental)")
+                    st.info("Note: Recursive forecasting uses the model's own predictions as input for the next day. Accuracy may decrease over longer horizons.")
+                    
+                    future_days = 7
+                    future_predictions = []
+                    
+                    # We start with the same last_100_days 
+                    current_batch = scaled_data[-seq_length:].copy() 
+                    
+                    for i in range(future_days):
+                        # 1. Prepare input
+                        if "LSTM" in model_type:
+                            input_feed = np.reshape(current_batch, (1, seq_length, 3))
+                        else:
+                            input_feed = current_batch.flatten().reshape(1, -1)
+                            
+                        # 2. Predict next step
+                        next_pred_scaled = model.predict(input_feed)[0] 
                         
-                    # 2. Predict next step
-                    next_pred_scaled = model.predict(input_feed)[0] # e.g. [0.54] or [0.54] for LR (if reshape output)
-                    
-                    # Ensure scalar/1D extraction strictly
-                    if isinstance(next_pred_scaled, np.ndarray):
-                         # If shape is (1,1) or (1,), get simple float
-                        val_0 = next_pred_scaled.flatten()[0]
-                    else:
-                        val_0 = next_pred_scaled
-                    
-                    # 3. Store Result (Inverse Scale)
-                    # Reshape for inverse_transform if needed
-                    val_inv = target_scaler.inverse_transform([[val_0]])[0][0]
-                    future_predictions.append(val_inv)
-                    
-                    # 4. Update Batch for next step
-                    # We need to append the new "row" [Price, RSI, EMA]
-                    # Since we only predicted Price, we must assume RSI/EMA.
-                    # SIMPLEST APPROACH: Repeat the last known RSI/EMA values.
-                    
-                    last_row = current_batch[-1]
-                    new_row = np.array([val_0, last_row[1], last_row[2]]) # [NewPrice, OldRSI, OldEMA]
-                    
-                    # Append and pop first
-                    current_batch = np.vstack([current_batch[1:], new_row])
-                    
-                # Display 7-Day Results
-                dates_future = [datetime.today() + timedelta(days=i+1) for i in range(future_days)]
-                
-                # 1. Chart
-                fig_forecast = go.Figure()
-                # Connect to last actual
-                fig_forecast.add_trace(go.Scatter(x=[df.index[-1]] + dates_future, 
-                                                y=[last_actual_price] + future_predictions, 
-                                                mode='lines+markers', 
-                                                name='7-Day Forecast',
-                                                line=dict(color='purple', dash='dot')))
-                                                
-                fig_forecast.update_layout(title="7-Day Price Forecast", xaxis_title="Date", yaxis_title="Price (USD)")
-                st.plotly_chart(fig_forecast, use_container_width=True)
-                
-                # 2. Table
-                forecast_df = pd.DataFrame({
-                    "Date": [d.strftime('%Y-%m-%d') for d in dates_future],
-                    "Predicted Price": [f"${p:.2f}" for p in future_predictions]
-                })
-                st.table(forecast_df)
+                        # Ensure scalar/1D extraction strictly
+                        if isinstance(next_pred_scaled, np.ndarray):
+                            val_0 = next_pred_scaled.flatten()[0]
+                        else:
+                            val_0 = next_pred_scaled
                         
-                st.markdown("---")
-
-                # --- MODEL PERFORMANCE (Historical vs Predicted) ---
-                st.write("### Model Performance (Filter Applied)")
-                # Generate predictions for the visualization graph
-                # Create sequences from the existing data
-                x_test = []
-                # ... existing visualization code loop ...
-                
-                # (Skipping huge block of existing visualization for brevity in replacement search, 
-                # instead appending to end of main if block or inside it. 
-                # Wait, I need to append this new section AFTER the existing sections.
-                # Let's find the end of the 7-day forecast block and insert it there or at the very bottom of the valid data block.)
-                
-                # Actually, I'll insert it right after the 7-Day Forecast block for better flow.
-                
-                # --- NEWS & SENTIMENT ---
-                st.subheader("📰 Recent News & Sentiment")
-                news_items = get_stock_news(ticker)
-                
-                if news_items:
-                    # avg_sentiment = np.mean([n['score'] for n in news_items])
-                    # st.metric("Average Sentiment Score", f"{avg_sentiment:.2f}")
+                        # 3. Store Result (Inverse Scale)
+                        val_inv = target_scaler.inverse_transform([[val_0]])[0][0]
+                        future_predictions.append(val_inv)
+                        
+                        # 4. Update Batch
+                        last_row = current_batch[-1]
+                        new_row = np.array([val_0, last_row[1], last_row[2]]) # [NewPrice, OldRSI, OldEMA]
+                        
+                        current_batch = np.vstack([current_batch[1:], new_row])
+                        
+                    # Display 7-Day Results
+                    dates_future = [datetime.today() + timedelta(days=i+1) for i in range(future_days)]
                     
-                    for news in news_items:
-                        st.markdown(f"""
-                        <div style='padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;'>
-                            <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
-                                <b>{news['title']}</b>
-                            </a><br>
-                            <span style='color: gray; font-size: 0.8em;'>{news['publisher']}</span> • 
-                            <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.write("No recent news found.")
+                    # 1. Chart
+                    fig_forecast = go.Figure()
+                    fig_forecast.add_trace(go.Scatter(x=[df.index[-1]] + dates_future, 
+                                                    y=[last_actual_price] + future_predictions, 
+                                                    mode='lines+markers', 
+                                                    name='7-Day Forecast',
+                                                    line=dict(color='purple', dash='dot')))
+                                                    
+                    fig_forecast.update_layout(title="7-Day Price Forecast", xaxis_title="Date", yaxis_title="Price (USD)")
+                    st.plotly_chart(fig_forecast, use_container_width=True)
                     
-                st.markdown("---")
-                
-                # ... continuing with Model Performance ...
-                st.write("### Model Performance (Filter Applied)")
-                # Generate predictions for the visualization graph
-                # Create sequences from the existing data
-                x_test = []
-                y_test = [] 
-                
-                for i in range(seq_length, len(scaled_data)):
-                    x_test.append(scaled_data[i-seq_length:i])
-                    y_test.append(scaled_data[i, 0])
-                    
-                x_test, y_test = np.array(x_test), np.array(y_test)
-                
-                # Reshape if Linear Regression
-                if "Linear Regression" in model_type:
-                    x_test = x_test.reshape(x_test.shape[0], -1)
-                
-                predictions = model.predict(x_test)
-                # Reshape for inverse transform (Scaler expects 2D)
-                if predictions.ndim == 1:
-                    predictions = predictions.reshape(-1, 1)
-                
-                predictions = target_scaler.inverse_transform(predictions)
-                y_test_scaled = target_scaler.inverse_transform(y_test.reshape(-1, 1))
-                
-                # Filter predictions for display based on date
-                pred_dates = df.index[seq_length:]
-                
-                # Create DataFrame for easier filtering
-                pred_df = pd.DataFrame({
-                    'Actual': y_test_scaled.flatten(),
-                    'Predicted': predictions.flatten()
-                }, index=pred_dates)
-                
-                filtered_pred_df = pred_df.loc[str(start_date):str(end_date)]
-                
-                # Plot Predictions vs Actual (Interactive with Plotly)
-                fig2 = go.Figure()
-                fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Actual'], mode='lines', name='Actual Price', line=dict(color='blue')))
-                fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Predicted'], mode='lines', name='AI Predicted Price', line=dict(color='red')))
-                fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
-                st.plotly_chart(fig2, use_container_width=True)
-
-                # --- LAST 10 DAYS PERFORMANCE (New Feature) ---
-                st.markdown("---")
-                st.subheader("🔍 Model Performance (Last 10 Days)")
-                
-                # Get last 10 days of data
-                if len(y_test_scaled) >= 10:
-                    y_last_10 = y_test_scaled[-10:].flatten()
-                    pred_last_10 = predictions[-10:].flatten()
-                    
-                    # Create a date range for these points (Assuming consistent daily data ending mostly recently)
-                    # We trace back from the last available date in our dataframe
-                    last_date_idx = df.index[-1]
-                    dates_last_10 = df.index[-10:] 
-
-                    # 1. Metrics for Last 10 Days
-                    mae_10 = mean_absolute_error(y_last_10, pred_last_10)
-                    rmse_10 = np.sqrt(mean_squared_error(y_last_10, pred_last_10))
-
-                    m_col1, m_col2 = st.columns(2)
-                    m_col1.metric("Last 10 Days MAE", f"${mae_10:.2f}")
-                    m_col2.metric("Last 10 Days RMSE", f"${rmse_10:.2f}")
-
-                    # 2. Specific Chart for Last 10 Days
-                    fig3 = go.Figure()
-                    fig3.add_trace(go.Scatter(x=dates_last_10, y=y_last_10, mode='lines+markers', name='Actual Price', line=dict(color='blue')))
-                    fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='red', dash='dash')))
-                    fig3.update_layout(title="Last 10 Days: Actual vs Predicted", xaxis_title='Date', yaxis_title='Price (USD)')
-                    st.plotly_chart(fig3, use_container_width=True)
-                    
-                    # --- PROFIT ANALYSIS (Baseline Comparison) ---
-                    st.markdown("---")
-                    st.subheader("💰 Profit Analysis (Model vs Buy & Hold)")
-                    
-                    # 1. Calculate Daily Returns
-                    profit_df = filtered_pred_df.copy()
-                    profit_df['Daily_Return'] = profit_df['Actual'].pct_change()
-                    
-                    # 2. Signal: Buy (1) if Predicted > Previous Actual
-                    profit_df['Prev_Actual'] = profit_df['Actual'].shift(1)
-                    profit_df['Signal'] = np.where(profit_df['Predicted'] > profit_df['Prev_Actual'], 1, 0)
-                    
-                    # 3. Strategy Return
-                    profit_df['Strategy_Return'] = profit_df['Signal'].shift(1) * profit_df['Daily_Return']
-                    
-                    # 4. Cumulative Returns
-                    profit_df['Buy_Hold_Cum'] = (1 + profit_df['Daily_Return']).cumprod() - 1
-                    profit_df['Strategy_Cum'] = (1 + profit_df['Strategy_Return']).cumprod() - 1
-                    
-                    profit_df.fillna(0, inplace=True)
-                    
-                    # Plot
-                    fig_profit = go.Figure()
-                    fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Buy_Hold_Cum']*100, mode='lines', name='Buy & Hold (%)', line=dict(color='blue')))
-                    fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Strategy_Cum']*100, mode='lines', name='Model Strategy (%)', line=dict(color='green')))
-                    fig_profit.update_layout(title="Cumulative Return Comparison (Selected Period)", xaxis_title='Date', yaxis_title='Return (%)')
-                    st.plotly_chart(fig_profit, use_container_width=True)
-                    
-                    # Metrics
-                    total_buy_hold = profit_df['Buy_Hold_Cum'].iloc[-1] * 100
-                    total_strategy = profit_df['Strategy_Cum'].iloc[-1] * 100
-                    
-                    p_col1, p_col2 = st.columns(2)
-                    p_col1.metric("Total Buy & Hold Return", f"{total_buy_hold:.2f}%")
-                    p_col2.metric("Total Model Return", f"{total_strategy:.2f}%", delta=f"{total_strategy-total_buy_hold:.2f}%")
-                    
-                    # 3. Data Table
-                    comparison_df = pd.DataFrame({
-                        'Date': dates_last_10,
-                        'Actual Price': y_last_10,
-                        'Predicted Price': pred_last_10,
-                        'Difference': y_last_10 - pred_last_10,
-                        'Error %': np.abs((y_last_10 - pred_last_10) / y_last_10) * 100
+                    # 2. Table
+                    forecast_df = pd.DataFrame({
+                        "Date": [d.strftime('%Y-%m-%d') for d in dates_future],
+                        "Predicted Price": [f"${p:.2f}" for p in future_predictions]
                     })
-                    comparison_df.set_index('Date', inplace=True)
-                    st.write("### Detailed Data (Last 10 Days)")
-                    st.dataframe(comparison_df.style.format("{:.2f}"))
+                    st.table(forecast_df)
+                            
+                    st.markdown("---")
                     
-                    # Export Button
-                    csv = comparison_df.to_csv()
-                    st.download_button(
-                        label="📥 Download Data as CSV",
-                        data=csv,
-                        file_name=f'{ticker}_last_10_days_prediction.csv',
-                        mime='text/csv',
-                    )
-                else:
-                    st.warning("Not enough data to show last 10 days verification.")
+                    # --- NEWS & SENTIMENT ---
+                    st.subheader("📰 Recent News & Sentiment")
+                    news_items = get_stock_news(ticker)
+                    
+                    if news_items:
+                        for news in news_items:
+                            st.markdown(f"""
+                            <div style='padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;'>
+                                <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
+                                    <b>{news['title']}</b>
+                                </a><br>
+                                <span style='color: gray; font-size: 0.8em;'>{news['publisher']}</span> • 
+                                <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.write("No recent news found.")
 
-                # --- ACCURACY METRICS ---
-                st.subheader("Accuracy Metrics")
-                mae = mean_absolute_error(y_test_scaled, predictions)
-                rmse = np.sqrt(mean_squared_error(y_test_scaled, predictions))
-                
-                col1, col2 = st.columns(2)
-                col1.metric("Mean Absolute Error (MAE)", f"${mae:.2f}")
-                col2.metric("Root Mean Squared Error (RMSE)", f"${rmse:.2f}")
+                with tab2:
+                    # --- MODEL PERFORMANCE (Historical vs Predicted) ---
+                    st.write("### Model Performance (Filter Applied)")
+                    
+                    # Generate predictions for the visualization graph
+                    x_test = []
+                    y_test = [] 
+                    
+                    for i in range(seq_length, len(scaled_data)):
+                        x_test.append(scaled_data[i-seq_length:i])
+                        y_test.append(scaled_data[i, 0])
+                        
+                    x_test, y_test = np.array(x_test), np.array(y_test)
+                    
+                    # Reshape if Linear Regression
+                    if "Linear Regression" in model_type:
+                        x_test = x_test.reshape(x_test.shape[0], -1)
+                    
+                    predictions = model.predict(x_test)
+                    if predictions.ndim == 1:
+                        predictions = predictions.reshape(-1, 1)
+                    
+                    predictions = target_scaler.inverse_transform(predictions)
+                    y_test_scaled = target_scaler.inverse_transform(y_test.reshape(-1, 1))
+                    
+                    # Filter predictions for display based on date
+                    pred_dates = df.index[seq_length:]
+                    
+                    pred_df = pd.DataFrame({
+                        'Actual': y_test_scaled.flatten(),
+                        'Predicted': predictions.flatten()
+                    }, index=pred_dates)
+                    
+                    filtered_pred_df = pred_df.loc[str(start_date):str(end_date)]
+                    
+                    # Plot Predictions vs Actual
+                    fig2 = go.Figure()
+                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Actual'], mode='lines', name='Actual Price', line=dict(color='blue')))
+                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Predicted'], mode='lines', name='AI Predicted Price', line=dict(color='red')))
+                    fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
+                    st.plotly_chart(fig2, use_container_width=True)
+    
+                    # --- LAST 10 DAYS PERFORMANCE ---
+                    st.markdown("---")
+                    st.subheader("🔍 Model Performance (Last 10 Days)")
+                    
+                    if len(y_test_scaled) >= 10:
+                        y_last_10 = y_test_scaled[-10:].flatten()
+                        pred_last_10 = predictions[-10:].flatten()
+                        dates_last_10 = df.index[-10:] 
+    
+                        # Metrics
+                        mae_10 = mean_absolute_error(y_last_10, pred_last_10)
+                        rmse_10 = np.sqrt(mean_squared_error(y_last_10, pred_last_10))
+    
+                        m_col1, m_col2 = st.columns(2)
+                        m_col1.metric("Last 10 Days MAE", f"${mae_10:.2f}")
+                        m_col2.metric("Last 10 Days RMSE", f"${rmse_10:.2f}")
+    
+                        # Chart
+                        fig3 = go.Figure()
+                        fig3.add_trace(go.Scatter(x=dates_last_10, y=y_last_10, mode='lines+markers', name='Actual Price', line=dict(color='blue')))
+                        fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='red', dash='dash')))
+                        fig3.update_layout(title="Last 10 Days: Actual vs Predicted", xaxis_title='Date', yaxis_title='Price (USD)')
+                        st.plotly_chart(fig3, use_container_width=True)
+                        
+                        # --- PROFIT ANALYSIS ---
+                        st.markdown("---")
+                        st.subheader("💰 Profit Analysis (Model vs Buy & Hold)")
+                        
+                        profit_df = filtered_pred_df.copy()
+                        profit_df['Daily_Return'] = profit_df['Actual'].pct_change()
+                        profit_df['Prev_Actual'] = profit_df['Actual'].shift(1)
+                        profit_df['Signal'] = np.where(profit_df['Predicted'] > profit_df['Prev_Actual'], 1, 0)
+                        profit_df['Strategy_Return'] = profit_df['Signal'].shift(1) * profit_df['Daily_Return']
+                        profit_df['Buy_Hold_Cum'] = (1 + profit_df['Daily_Return']).cumprod() - 1
+                        profit_df['Strategy_Cum'] = (1 + profit_df['Strategy_Return']).cumprod() - 1
+                        profit_df.fillna(0, inplace=True)
+                        
+                        fig_profit = go.Figure()
+                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Buy_Hold_Cum']*100, mode='lines', name='Buy & Hold (%)', line=dict(color='blue')))
+                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Strategy_Cum']*100, mode='lines', name='Model Strategy (%)', line=dict(color='green')))
+                        fig_profit.update_layout(title="Cumulative Return Comparison", xaxis_title='Date', yaxis_title='Return (%)')
+                        st.plotly_chart(fig_profit, use_container_width=True)
+                        
+                        p_col1, p_col2 = st.columns(2)
+                        p_col1.metric("Total Buy & Hold Return", f"{profit_df['Buy_Hold_Cum'].iloc[-1] * 100:.2f}%")
+                        p_col2.metric("Total Model Return", f"{profit_df['Strategy_Cum'].iloc[-1] * 100:.2f}%")
+                    else:
+                        st.warning("Not enough data to show last 10 days verification.")
+    
+                    # --- ACCURACY METRICS ---
+                    st.subheader("Accuracy Metrics")
+                    mae = mean_absolute_error(y_test_scaled, predictions)
+                    rmse = np.sqrt(mean_squared_error(y_test_scaled, predictions))
+                    
+                    col1, col2 = st.columns(2)
+                    col1.metric("Mean Absolute Error (MAE)", f"${mae:.2f}")
+                    col2.metric("Root Mean Squared Error (RMSE)", f"${rmse:.2f}")
+
+                with tab3:
+                    if len(y_test_scaled) >= 10:
+                        # 3. Data Table (Last 10 Days)
+                         # Review: Re-creating comparison df as it was inside the if block earlier
+                        comparison_df = pd.DataFrame({
+                            'Date': dates_last_10,
+                            'Actual Price': y_last_10,
+                            'Predicted Price': pred_last_10,
+                            'Difference': y_last_10 - pred_last_10,
+                            'Error %': np.abs((y_last_10 - pred_last_10) / y_last_10) * 100
+                        })
+                        comparison_df.set_index('Date', inplace=True)
+                        st.write("### Detailed Data (Last 10 Days)")
+                        st.dataframe(comparison_df.style.format("{:.2f}"))
+                        
+                        # Export Button
+                        csv = comparison_df.to_csv()
+                        st.download_button(
+                            label="📥 Download Data as CSV",
+                            data=csv,
+                            file_name=f'{ticker}_last_10_days_prediction.csv',
+                            mime='text/csv',
+                        )
+                    else:
+                        st.write("No detailed data available.")
