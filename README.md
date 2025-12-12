@@ -23,6 +23,7 @@ A Machine Learning powered application that predicts stock prices using an LSTM 
    - **Session Tracking**: Tracks your shares, cash balance, and total portfolio value (session-based).
 
 ### 4. **Data Transparency & UX**
+   - **In-App Guide**: Built-in "How to Use" guide and helpful tooltips for every feature.
    - **Tabbed Layout**: Clean interface with separate tabs for Forecasts, Performance Metrics, and Raw Data.
    - **Accuracy Metrics**: Live **MAE** and **RMSE** scores for the selected period.
    - **Detailed Data**: View and **Export** historical predictions and errors as CSV.
