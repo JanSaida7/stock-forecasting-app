@@ -514,7 +514,7 @@ if st.session_state['run_forecast']:
                     fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Actual'], mode='lines', name='Actual Price', line=dict(color='blue')))
                     fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Predicted'], mode='lines', name='AI Predicted Price', line=dict(color='red')))
                     fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
-                    st.plotly_chart(fig2, use_container_width=True)
+                    st.plotly_chart(fig2)
     
                     # --- LAST 10 DAYS PERFORMANCE ---
                     st.markdown("---")
