@@ -3,9 +3,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from tensorflow.keras.models import load_model
-from datetime import datetime
+from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+from textblob import TextBlob
+import yfinance as yf
 
 # Import our helper functions
 from data_loader import load_data
@@ -16,6 +19,46 @@ from model import train_universal_model # Import training logic
 @st.cache_data
 def load_data_cached(ticker):
     return load_data(ticker)
+
+# Fetch News function
+@st.cache_data(ttl=3600) # Cache for 1 hour
+def get_stock_news(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        news_list = stock.news
+        
+        processed_news = []
+        if news_list:
+            for item in news_list[:5]: # Top 5 news
+                title = item.get('title', '')
+                link = item.get('link', '')
+                publisher = item.get('publisher', 'Unknown')
+                
+                # Sentiment Analysis
+                analysis = TextBlob(title)
+                polarity = analysis.sentiment.polarity
+                
+                if polarity > 0.1:
+                    sentiment = "Positive"
+                    color = "green"
+                elif polarity < -0.1:
+                    sentiment = "Negative"
+                    color = "red"
+                else:
+                    sentiment = "Neutral"
+                    color = "gray"
+                    
+                processed_news.append({
+                    'title': title,
+                    'link': link,
+                    'publisher': publisher,
+                    'sentiment': sentiment,
+                    'color': color,
+                    'score': polarity
+                })
+        return processed_news
+    except Exception as e:
+        return []
 
 # Train Linear Regression Model (On-the-fly)
 @st.cache_resource
@@ -233,9 +276,113 @@ if st.session_state['run_forecast']:
                         st.markdown(f"<h2 style='color: gray;'>⏸️ HOLD SIGNAL</h2>", unsafe_allow_html=True)
                         st.write(f"Predicted to STAY FLAT at ${last_actual_price:.2f}")
                         
+                # --- 7-DAY FORECAST (Recursive) ---
+                st.markdown("---")
+                st.subheader("📅 7-Day Forecast (Experimental)")
+                st.info("Note: Recursive forecasting uses the model's own predictions as input for the next day. Accuracy may decrease over longer horizons.")
+                
+                future_days = 7
+                future_predictions = []
+                
+                # We start with the same last_100_days 
+                # (We need to be careful not to mutate the original if we needed it, but here we can just start fresh selection)
+                current_batch = scaled_data[-seq_length:].copy() 
+                
+                for i in range(future_days):
+                    # 1. Prepare input
+                    if "LSTM" in model_type:
+                        input_feed = np.reshape(current_batch, (1, seq_length, 3))
+                    else:
+                        input_feed = current_batch.flatten().reshape(1, -1)
+                        
+                    # 2. Predict next step
+                    next_pred_scaled = model.predict(input_feed)[0] # e.g. [0.54] or [0.54] for LR (if reshape output)
+                    
+                    # Ensure scalar/1D extraction strictly
+                    if isinstance(next_pred_scaled, np.ndarray):
+                         # If shape is (1,1) or (1,), get simple float
+                        val_0 = next_pred_scaled.flatten()[0]
+                    else:
+                        val_0 = next_pred_scaled
+                    
+                    # 3. Store Result (Inverse Scale)
+                    # Reshape for inverse_transform if needed
+                    val_inv = target_scaler.inverse_transform([[val_0]])[0][0]
+                    future_predictions.append(val_inv)
+                    
+                    # 4. Update Batch for next step
+                    # We need to append the new "row" [Price, RSI, EMA]
+                    # Since we only predicted Price, we must assume RSI/EMA.
+                    # SIMPLEST APPROACH: Repeat the last known RSI/EMA values.
+                    
+                    last_row = current_batch[-1]
+                    new_row = np.array([val_0, last_row[1], last_row[2]]) # [NewPrice, OldRSI, OldEMA]
+                    
+                    # Append and pop first
+                    current_batch = np.vstack([current_batch[1:], new_row])
+                    
+                # Display 7-Day Results
+                dates_future = [datetime.today() + timedelta(days=i+1) for i in range(future_days)]
+                
+                # 1. Chart
+                fig_forecast = go.Figure()
+                # Connect to last actual
+                fig_forecast.add_trace(go.Scatter(x=[df.index[-1]] + dates_future, 
+                                                y=[last_actual_price] + future_predictions, 
+                                                mode='lines+markers', 
+                                                name='7-Day Forecast',
+                                                line=dict(color='purple', dash='dot')))
+                                                
+                fig_forecast.update_layout(title="7-Day Price Forecast", xaxis_title="Date", yaxis_title="Price (USD)")
+                st.plotly_chart(fig_forecast, use_container_width=True)
+                
+                # 2. Table
+                forecast_df = pd.DataFrame({
+                    "Date": [d.strftime('%Y-%m-%d') for d in dates_future],
+                    "Predicted Price": [f"${p:.2f}" for p in future_predictions]
+                })
+                st.table(forecast_df)
+                        
                 st.markdown("---")
 
                 # --- MODEL PERFORMANCE (Historical vs Predicted) ---
+                st.write("### Model Performance (Filter Applied)")
+                # Generate predictions for the visualization graph
+                # Create sequences from the existing data
+                x_test = []
+                # ... existing visualization code loop ...
+                
+                # (Skipping huge block of existing visualization for brevity in replacement search, 
+                # instead appending to end of main if block or inside it. 
+                # Wait, I need to append this new section AFTER the existing sections.
+                # Let's find the end of the 7-day forecast block and insert it there or at the very bottom of the valid data block.)
+                
+                # Actually, I'll insert it right after the 7-Day Forecast block for better flow.
+                
+                # --- NEWS & SENTIMENT ---
+                st.subheader("📰 Recent News & Sentiment")
+                news_items = get_stock_news(ticker)
+                
+                if news_items:
+                    # avg_sentiment = np.mean([n['score'] for n in news_items])
+                    # st.metric("Average Sentiment Score", f"{avg_sentiment:.2f}")
+                    
+                    for news in news_items:
+                        st.markdown(f"""
+                        <div style='padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;'>
+                            <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
+                                <b>{news['title']}</b>
+                            </a><br>
+                            <span style='color: gray; font-size: 0.8em;'>{news['publisher']}</span> • 
+                            <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.write("No recent news found.")
+                    
+                st.markdown("---")
+                
+                # ... continuing with Model Performance ...
                 st.write("### Model Performance (Filter Applied)")
                 # Generate predictions for the visualization graph
                 # Create sequences from the existing data
