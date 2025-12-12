@@ -35,13 +35,24 @@ def get_stock_news(ticker):
                 content = item.get('content', item) # Fallback to item if not nested
                 
                 title = content.get('title', '')
-                link_data = content.get('canonicalUrl', content.get('link', ''))
+                # Attempt to find link in various fields
+                link = '#'
+                candidates = [
+                    content.get('clickThroughUrl'),
+                    content.get('canonicalUrl'),
+                    content.get('link')
+                ]
                 
-                # Check if link is a dictionary (common in yfinance news)
-                if isinstance(link_data, dict):
-                    link = link_data.get('url', '')
-                else:
-                    link = str(link_data)
+                for candidate in candidates:
+                    if candidate:
+                        if isinstance(candidate, dict):
+                            found_url = candidate.get('url')
+                            if found_url:
+                                link = found_url
+                                break
+                        elif isinstance(candidate, str):
+                            link = candidate
+                            break
                 
                 # Provider/Publisher might be a dict or string
                 pub_data = content.get('provider', {})
