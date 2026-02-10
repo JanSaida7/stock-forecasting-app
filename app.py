@@ -181,7 +181,7 @@ if st.session_state['run_forecast']:
     
     # 1. Load Data
     with st.spinner("Downloading data..."):
-        df = load_data_cached(ticker)
+        df = load_data_cached(ticker).copy()
     
     if df.empty:
         st.error(f"Could not load data for {ticker}. Please check the ticker symbol.")
@@ -404,7 +404,26 @@ if st.session_state['run_forecast']:
                             unsafe_allow_html=True
                         )
                         
+                # --- TECHNICAL INDICATORS ---
+                st.markdown("---")
+                st.subheader("📊 Technical Indicators")
                 
+                # Check if indicators exist (they should be added by scale_data)
+                if 'RSI' in df.columns and 'EMA_50' in df.columns:
+                    last_rsi = df['RSI'].iloc[-1]
+                    last_ema = df['EMA_50'].iloc[-1]
+                    
+                    # Interpretation for Color
+                    rsi_color = "normal"
+                    if last_rsi > 70: rsi_color = "inverse" # Overbought
+                    elif last_rsi < 30: rsi_color = "inverse" # Oversold
+                    
+                    i_col1, i_col2 = st.columns(2)
+                    i_col1.metric("RSI (14-day)", f"{last_rsi:.2f}", help="Relative Strength Index. >70 Overbought, <30 Oversold.")
+                    i_col2.metric("EMA (50-day)", f"${last_ema:.2f}", help="Exponential Moving Average (50-day). Trend indicator.")
+                else:
+                    st.warning("Technical indicators not available.")
+
                 # --- TABS SETUP ---
                 tab1, tab2, tab3 = st.tabs(["📅 Forecast & News", "📊 Model Performance", "📥 Raw Data"])
                 
