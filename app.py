@@ -291,10 +291,15 @@ if st.session_state['run_forecast']:
                 fig.add_trace(go.Scatter(x=filtered_df.index, y=close_price, mode='lines', name='Close Price'))
                 
             fig.update_layout(
-                title=f"{ticker} Historical Prices",
+                title=dict(text=f"{ticker} Historical Prices", font=dict(size=24, color="#1f77b4")),
                 yaxis_title='Price (USD)',
+                xaxis_title='Date',
+                template="plotly_white",
+                hovermode="x unified",
                 xaxis_rangeslider_visible=False,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 xaxis=dict(
+                    showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)',
                     rangeselector=dict(
                         buttons=list([
                             dict(count=1, label="1m", step="month", stepmode="backward"),
@@ -304,7 +309,9 @@ if st.session_state['run_forecast']:
                             dict(step="all")
                         ])
                     )
-                )
+                ),
+                yaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)'),
+                plot_bgcolor='rgba(0,0,0,0)',
             )
             st.plotly_chart(fig, use_container_width=True)
             
@@ -468,14 +475,23 @@ if st.session_state['run_forecast']:
                     dates_future = [datetime.today() + timedelta(days=i+1) for i in range(future_days)]
                     
                     # 1. Chart
-                    fig_forecast = go.Figure()
                     fig_forecast.add_trace(go.Scatter(x=[df.index[-1]] + dates_future, 
                                                     y=[last_actual_price] + future_predictions, 
                                                     mode='lines+markers', 
                                                     name='7-Day Forecast',
-                                                    line=dict(color='purple', dash='dot')))
+                                                    line=dict(color='#9467bd', width=3, dash='dot'),
+                                                    marker=dict(size=8, color='#9467bd')))
                                                     
-                    fig_forecast.update_layout(title="7-Day Price Forecast", xaxis_title="Date", yaxis_title="Price (USD)")
+                    fig_forecast.update_layout(
+                        title=dict(text="7-Day Price Forecast", font=dict(size=20)),
+                        xaxis_title="Date", 
+                        yaxis_title="Price (USD)",
+                        template="plotly_white",
+                        hovermode="x unified",
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        xaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)'),
+                        yaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)')
+                    )
                     st.plotly_chart(fig_forecast, use_container_width=True)
                     
                     # 2. Table
@@ -571,11 +587,22 @@ if st.session_state['run_forecast']:
                     filtered_pred_df = pred_df.loc[str(start_date):str(end_date)]
                     
                     # Plot Predictions vs Actual
+                    # Plot Predictions vs Actual
                     fig2 = go.Figure()
-                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Actual'], mode='lines', name='Actual Price', line=dict(color='blue')))
-                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Predicted'], mode='lines', name='AI Predicted Price', line=dict(color='red')))
-                    fig2.update_layout(title=f"{ticker} - Actual vs Predicted", xaxis_title='Time', yaxis_title='Price (USD)')
-                    st.plotly_chart(fig2)
+                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Actual'], mode='lines', name='Actual Price', line=dict(color='#1f77b4', width=2)))
+                    fig2.add_trace(go.Scatter(x=filtered_pred_df.index, y=filtered_pred_df['Predicted'], mode='lines', name='AI Predicted Price', line=dict(color='#ff7f0e', width=2)))
+                    fig2.update_layout(
+                        title=dict(text=f"{ticker} - Actual vs Predicted", font=dict(size=20)), 
+                        xaxis_title='Time', 
+                        yaxis_title='Price (USD)',
+                        template="plotly_white",
+                        hovermode="x unified",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        xaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)'),
+                        yaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)')
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
     
                     # --- LAST 10 DAYS PERFORMANCE ---
                     st.markdown("---")
@@ -595,10 +622,20 @@ if st.session_state['run_forecast']:
                         m_col2.metric("Last 10 Days RMSE", f"${rmse_10:.2f}")
     
                         # Chart
+                        # Chart
                         fig3 = go.Figure()
-                        fig3.add_trace(go.Scatter(x=dates_last_10, y=y_last_10, mode='lines+markers', name='Actual Price', line=dict(color='blue')))
-                        fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='red', dash='dash')))
-                        fig3.update_layout(title="Last 10 Days: Actual vs Predicted", xaxis_title='Date', yaxis_title='Price (USD)')
+                        fig3.add_trace(go.Scatter(x=dates_last_10, y=y_last_10, mode='lines+markers', name='Actual Price', line=dict(color='#1f77b4', width=2)))
+                        fig3.add_trace(go.Scatter(x=dates_last_10, y=pred_last_10, mode='lines+markers', name='Predicted Price', line=dict(color='#ff7f0e', width=2, dash='dash')))
+                        fig3.update_layout(
+                            title=dict(text="Last 10 Days: Actual vs Predicted", font=dict(size=20)), 
+                            xaxis_title='Date', 
+                            yaxis_title='Price (USD)',
+                            template="plotly_white",
+                            hovermode="x unified",
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            xaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)'),
+                            yaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)')
+                        )
                         st.plotly_chart(fig3, use_container_width=True)
                         
                         # --- PROFIT ANALYSIS ---
@@ -615,9 +652,19 @@ if st.session_state['run_forecast']:
                         profit_df.fillna(0, inplace=True)
                         
                         fig_profit = go.Figure()
-                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Buy_Hold_Cum']*100, mode='lines', name='Buy & Hold (%)', line=dict(color='blue')))
-                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Strategy_Cum']*100, mode='lines', name='Model Strategy (%)', line=dict(color='green')))
-                        fig_profit.update_layout(title="Cumulative Return Comparison", xaxis_title='Date', yaxis_title='Return (%)')
+                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Buy_Hold_Cum']*100, mode='lines', name='Buy & Hold (%)', line=dict(color='#1f77b4', width=2), fill='tozeroy', fillcolor='rgba(31, 119, 180, 0.1)'))
+                        fig_profit.add_trace(go.Scatter(x=profit_df.index, y=profit_df['Strategy_Cum']*100, mode='lines', name='Model Strategy (%)', line=dict(color='#2ca02c', width=2), fill='tozeroy', fillcolor='rgba(44, 160, 44, 0.1)'))
+                        fig_profit.update_layout(
+                            title=dict(text="Cumulative Return Comparison", font=dict(size=20)), 
+                            xaxis_title='Date', 
+                            yaxis_title='Return (%)',
+                            template="plotly_white",
+                            hovermode="x unified",
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            xaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)'),
+                            yaxis=dict(showgrid=True, gridcolor='rgba(211, 211, 211, 0.3)')
+                        )
                         st.plotly_chart(fig_profit, use_container_width=True)
                         
                         p_col1, p_col2 = st.columns(2)
