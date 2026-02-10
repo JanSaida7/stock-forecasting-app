@@ -473,14 +473,44 @@ if st.session_state['run_forecast']:
                     news_items = get_stock_news(ticker)
                     
                     if news_items:
+                        st.markdown("""
+                        <style>
+                        .news-card {
+                            background-color: #f8f9fa;
+                            border: 1px solid #e9ecef;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin-bottom: 15px;
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        }
+                        .news-card:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        }
+                        .news-title {
+                            font-weight: bold;
+                            color: #007bff;
+                            text-decoration: none;
+                            font-size: 1.1em;
+                        }
+                        .news-meta {
+                            font-size: 0.85em;
+                            color: #6c757d;
+                            margin-top: 5px;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
                         for news in news_items:
                             st.markdown(f"""
-                            <div style='padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;'>
-                                <a href='{news['link']}' target='_blank' style='text-decoration: none; color: inherit;'>
-                                    <b>{news['title']}</b>
-                                </a><br>
-                                <span style='color: gray; font-size: 0.8em;'>{news['publisher']}</span> • 
-                                <span style='color: {news['color']}; font-weight: bold;'>{news['sentiment']}</span>
+                            <div class="news-card">
+                                <a href="{news['link']}" target="_blank" class="news-title">
+                                    {news['title']}
+                                </a>
+                                <div class="news-meta">
+                                    <span>{news['publisher']}</span> • 
+                                    <span style="color: {news['color']}; font-weight: bold;">{news['sentiment']}</span>
+                                </div>
                             </div>
                             """, unsafe_allow_html=True)
                     else:
