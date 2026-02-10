@@ -355,9 +355,11 @@ if st.session_state['run_forecast']:
                 col_pred, col_signal = st.columns(2)
                 
                 with col_pred:
+                    delta_val = predicted_price[0][0] - last_actual_price
                     st.metric(
-                        label="Predicted Close Price for Tomorrow", 
+                        label="Predicted Close Price (Tomorrow)", 
                         value=f"${predicted_price[0][0]:.2f}",
+                        delta=f"{delta_val:.2f}",
                         help="The AI's best guess for the stock's closing price on the next trading day."
                     )
                     
@@ -372,14 +374,35 @@ if st.session_state['run_forecast']:
                     predicted_value = predicted_price[0][0]
                     
                     if predicted_value > last_actual_price:
-                        st.markdown(f"<h2 style='color: green;'>✅ BUY SIGNAL</h2>", unsafe_allow_html=True)
-                        st.write(f"Predicted to RISE from ${last_actual_price:.2f}")
+                        st.markdown(
+                            """
+                            <div style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; border: 1px solid #c3e6cb; text-align: center;">
+                                <h3 style="margin:0;">✅ BUY SIGNAL</h3>
+                                <p style="margin:0;">Predicted to RISE</p>
+                            </div>
+                            """, 
+                            unsafe_allow_html=True
+                        )
                     elif predicted_value < last_actual_price:
-                        st.markdown(f"<h2 style='color: red;'>🔻 SELL SIGNAL</h2>", unsafe_allow_html=True)
-                        st.write(f"Predicted to FALL from ${last_actual_price:.2f}")
+                        st.markdown(
+                            """
+                            <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; border: 1px solid #f5c6cb; text-align: center;">
+                                <h3 style="margin:0;">🔻 SELL SIGNAL</h3>
+                                <p style="margin:0;">Predicted to FALL</p>
+                            </div>
+                            """, 
+                            unsafe_allow_html=True
+                        )
                     else:
-                        st.markdown(f"<h2 style='color: gray;'>⏸️ HOLD SIGNAL</h2>", unsafe_allow_html=True)
-                        st.write(f"Predicted to STAY FLAT at ${last_actual_price:.2f}")
+                        st.markdown(
+                            """
+                            <div style="background-color: #e2e3e5; color: #383d41; padding: 10px; border-radius: 5px; border: 1px solid #d6d8db; text-align: center;">
+                                <h3 style="margin:0;">⏸️ HOLD SIGNAL</h3>
+                                <p style="margin:0;">Predicted to STAY FLAT</p>
+                            </div>
+                            """, 
+                            unsafe_allow_html=True
+                        )
                         
                 
                 # --- TABS SETUP ---
