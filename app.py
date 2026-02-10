@@ -118,7 +118,8 @@ st.set_page_config(page_title="Stock Forecaster", layout="wide")
 st.title("📈 Stock Market Forecasting App")
 
 # Sidebar for user input
-st.sidebar.header("User Input")
+# Sidebar for user input
+# st.sidebar.header("User Input")
 
 # --- APP GUIDE ---
 with st.sidebar.expander("ℹ️ How to use", expanded=False):
@@ -707,3 +708,18 @@ if st.session_state['run_forecast']:
                         )
                     else:
                         st.write("No detailed data available.")
+
+                # --- FOOTER ---
+                st.markdown("---")
+                st.markdown(
+                    """
+                    <div style="text-align: center; color: #6c757d; font-size: 0.8em;">
+                        <p>
+                            <b>Stock Market Forecasting App</b> | Built with Streamlit & TensorFlow<br>
+                            Data provided by Yahoo Finance. <br>
+                            <i>Disclaimer: This app is for educational purposes only. Not financial advice.</i>
+                        </p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
